@@ -1,0 +1,4 @@
+cargo run --release --features native
+
+cargo run --release --target wasm32-unknown-unknown --features web
+basic-http-server
