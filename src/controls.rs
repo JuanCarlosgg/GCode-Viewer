@@ -36,21 +36,14 @@ pub fn pan_orbit_camera(
     mut query: Query<(&mut PanOrbitCamera, &mut Transform)>,
 ) {
     let mut rotation_move = Vec2::zero();
-    let mut translation = Vec2::zero();
     let mut scroll = 0.0;
-    //let dt = time.delta_seconds();
 
     if mousebtn.pressed(MouseButton::Right) {
         rotation_move = state
             .reader_motion
             .iter(&ev_motion)
             .fold(rotation_move, |acc, x| acc + x.delta);
-    } else if mousebtn.pressed(MouseButton::Left) {
-        translation = state
-            .reader_motion
-            .iter(&ev_motion)
-            .fold(translation, |acc, x| acc + x.delta);
-    }
+    } 
     scroll = state
         .reader_scroll
         .iter(&ev_scroll)
@@ -59,9 +52,7 @@ pub fn pan_orbit_camera(
     for ev in state.mouse_position.iter(&ev_cursor) {
         state.cursor_pos = ev.position;
     }
-    /*for ev in state.reader_scroll.iter(&ev_scroll) {
-        scroll += ev.y;
-    }*/
+
 
     let window = windows.get_primary().unwrap();
     let window_w = window.width();
@@ -69,7 +60,6 @@ pub fn pan_orbit_camera(
 
     // Either pan+scroll or arcball. We don't do both at once.
     for (camera, mut trans) in query.iter_mut() {
-        //println!("{:?}", trans);
 
         if rotation_move.length_squared() > 0.0 {
             // Link virtual sphere rotation relative to window to make it feel nicer
@@ -90,7 +80,10 @@ pub fn pan_orbit_camera(
             trans.scale.y += 0.05 * -scroll;
             trans.scale.x += 0.05 * -scroll;
         }
+        //println!("{:?}", trans);
+
     }
+
 }
 
 // Spawn a camera like this:
@@ -100,14 +93,19 @@ pub fn spawn_camera(commands: &mut Commands) {
         .spawn((PanOrbitCamera::default(),))
         .with_bundle(Camera3dBundle {
             transform: Transform {
-                translation: Vec3::new(456.88736, 250.77605, 391.00247),
-                rotation: Quat::from_xyzw(-0.17827538, 0.41007608, 0.082078986, 0.89068437),
-                scale: Vec3::new(1.2425, 1.2425, 1.0),
+                translation: Vec3::new(-336.65918, 333.0896, -447.4693), 
+                rotation: Quat::from_xyzw(0.084021315, 0.9145102, 0.2514309, -0.30560428), 
+                scale: Vec3::new(0.7487499, 0.7487499, 1.0)
             },
             ..Default::default()
-        }) /* .with_children(|parent| { 
+        })  /* .with_children(|parent| { 
             parent.spawn( LightBundle {
-                transform: Transform::from_translation(Vec3::new(4.0, 1800.0, 4.0)),
+                light : Light {
+                    depth : 0.0..360.0,
+                    fov : 360.0,
+                    ..Default::default()
+                },
+                transform: Transform::from_rotation(Quat::from_rotation_y(f32::to_radians(90.0))),
                 ..Default::default()
             });
         })*/;

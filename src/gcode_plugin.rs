@@ -1,46 +1,41 @@
+use std::collections::{HashMap, binary_heap};
+
 use gcode::Mnemonic;
 
 use bevy::prelude::*;
 
-use crate::{cylinder, poly};
+use crate::{poly};
 
 #[cfg(target_arch = "wasm32")]
 use web_sys::{Document, Element, HtmlElement, Window};
 
 
-
-
 #[cfg(not(target_arch = "wasm32"))]
 pub struct GCodeContent {
-    text: String, //Lines<std::io::BufReader<std::fs::File>>,
-    line: usize,
-    update: bool,
-    level: usize,
+    pub text: String, 
+    pub level: u32,
+    updated: bool,
+    pub need_reload : bool,
     pos: (f32, f32, f32),
-    pub plane: Option<Entity>,
-    pub last_point: Option<Entity>,
-    pub last_transform: Option<Transform>,
+    pub entities: HashMap<(u32, u32, u32), Entity>,
+    pub show_moves : bool,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 impl Default for GCodeContent {
     fn default() -> Self {
-        /*let content_ = std::io::BufReader::new(
-            std::fs::File::open("files/barco.gco" /*"files/simpletest3.gco"*/).unwrap(),
-        )
-        .lines();*/
-        let content_ =
-            std::fs::read_to_string("files/barco.gco" /*"files/simpletest3.gco"*/).unwrap();
+
+        //let content_ =
+        //    std::fs::read_to_string("files/barco.gco" /*"files/simpletest3.gco"*/).unwrap();
 
         GCodeContent {
-            text: content_,
-            line: 0usize,
-            update: true,
-            level: 0usize,
-            pos: (0.0, 0.0, 0.0),
-            plane: None,
-            last_point: None,
-            last_transform: None,
+            text : "".to_owned(),
+            level : 0,
+            updated : false,
+            need_reload : false,
+            pos : (0.0, 0.0, 0.0),
+            entities : HashMap::new(),
+            show_moves : false,
         }
     }
 }
@@ -49,7 +44,6 @@ impl Default for GCodeContent {
 pub struct GCodeContent {
     text: String,
     pos_iter: usize,
-    line: usize,
     update: bool,
     pos: (f32, f32, f32),
     pub plane: Option<Entity>,
@@ -76,7 +70,6 @@ impl Default for GCodeContent {
         GCodeContent {
             text: file,
             pos_iter: 0usize,
-            line: 0usize,
             update: true,
             pos: (0.0, 0.0, 0.0),
             plane: None,
@@ -93,14 +86,14 @@ fn spawn_points_custom_mesh(
     meshes: &mut ResMut<Assets<Mesh>>,
     materials: &mut ResMut<Assets<StandardMaterial>>,
 ) {
-    if gcode.update {
+    if !gcode.updated && gcode.text != "" {
         let mut vec_lines: Vec<PbrBundle> = vec![];
 
         let mut last_x = gcode.pos.0;
         let mut last_y = gcode.pos.1;
         let mut last_z = gcode.pos.2;
 
-        println!("Aqui empezamos");
+        println!("Start");
 
         let mut segments: Vec<Vec<String>> = vec![];
         gcode.text.lines().for_each(|line: &str| {
@@ -111,8 +104,9 @@ fn spawn_points_custom_mesh(
             }
         });
 
-        println!("lineas: {}", segments.len());
+        println!("lines: {}", segments.len());
 
+        let mut ctr = 0;
         for block in segments.iter() {
             let block_str: &str = &*block.join("\n");
             let mut iter = gcode::parse(block_str).peekable();
@@ -122,7 +116,6 @@ fn spawn_points_custom_mesh(
 
             for (_idx, instruction) in iter.enumerate() {
                 if instruction.arguments().is_empty() { continue; }
-                //println!("idx : {}, {}", _idx, instruction);
 
                 match (
                     instruction.mnemonic(),
@@ -142,8 +135,8 @@ fn spawn_points_custom_mesh(
 
                         points.push((last_x, last_y, last_z));
                         if y_opt.is_some() {
-                            //println!("{}", gcode.level);
                             gcode.level += 1;
+                            ctr = 0;
                         }
                     }
                     (Mnemonic::General, 1, _) => {
@@ -153,52 +146,49 @@ fn spawn_points_custom_mesh(
                     }
                     _ => (),
                 }
+
+                
             }
 
             if major_number < 2 {
                 let last_point = Vec3::new(gcode.pos.0, gcode.pos.1, gcode.pos.2);
-                /* 
-                let distance = Vec3::distance(new_point, last_point);
-
-                
-                let rotate = |target: &Vec3| -> Transform {
-                    let pi = std::f32::consts::PI;
-
-                    let current_dir = Vec3::unit_y();
-                    let target_dir = target.normalize();
-
-                    let dot = current_dir.dot(target_dir);
-                    let angle = dot.acos();
-                    let axis = current_dir.cross(target_dir).normalize();
-                    let mut tr = Transform::from_rotation(Quat::from_axis_angle(axis, angle + pi));
-
-                    tr.translation = last_point;
-                    tr
-                };
-                */
                 gcode.pos = (last_x, last_y, last_z);
 
                 let (size, color) = match major_number {
                     0 => (0.12, Color::rgb(1.0, 1.0, 0.0)),
-                    1 => (0.3, Color::rgb(1.0, 0.0, 0.0)),
+                    1 => (0.22, Color::rgb(1.0, 0.0, 0.0)),
                     _ => continue,
                 };
 
-                //if major_number == 1 {
-                vec_lines.push(PbrBundle {
-                    mesh: meshes.add(Mesh::from(poly::Poly::new(size, size*2.0, points, last_point))),
+                let vis = major_number == 1 || gcode.show_moves;
+                /*vec_lines.push(*/ 
+                commands.spawn(PbrBundle {
+                    mesh: meshes.add(Mesh::from(poly::Poly::new(size, size, points, last_point))),
                     material: materials.add(color.into()),
-                    transform: Transform::default(), //rotate(&(-new_point + last_point)),
+                    transform: Transform::from_translation(Vec3::new(-100.0, 0.0, -100.0)), //rotate(&(-new_point + last_point)),
+                    visible : Visible {
+                        is_visible: vis,
+                        is_transparent: false,
+                    },
                     ..Default::default()
                 });
-                //}
+                 /* );*/
+
+                let level = gcode.level;
+                let c = commands.current_entity().unwrap();
+                gcode.entities.insert((level, major_number, ctr), c);
+
+                ctr +=1;
             }
         }
+
+        
 
         println!("Total : {}", vec_lines.len());
         commands.spawn_batch(vec_lines);
 
-        gcode.update = false;
+        
+        gcode.updated = true;
         println!("Finish");
     }
 }
@@ -218,6 +208,20 @@ pub fn spawn_points_system(
 
     state.update = false;
     */
+
+    if state.need_reload {
+
+        println!("Need reload");
+         for (_i, e) in state.entities.iter() {
+            commands.despawn(*e);
+        }
+
+        state.updated = false;
+        state.need_reload = false;
+        state.pos = (0.0, 0.0, 0.0);
+        state.level = 0;
+        state.entities.clear();
+    }
 
     //spawn_points_optim(commands, &mut state, &mut meshes, &mut materials);
     spawn_points_custom_mesh(commands, &mut state, &mut meshes, &mut materials);
