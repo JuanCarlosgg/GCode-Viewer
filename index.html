@@ -2,6 +2,7 @@
   <head>
     <meta charset="utf-8"/>
     <style>
+      /*
       body {
         background: linear-gradient(
           135deg,
@@ -14,54 +15,31 @@
         );
         background-repeat: repeat;
         background-size: 20px 20px;
-      }
+      }*/
+
       canvas {
         background-color: white;
       }
+
+          
+   
     </style>
   </head>
 
   <body>
 
     
-    <input type="file" id="input_file" name="File" accept=".gco, .gcode">
+    <input type="file" id="input_file" name="File" accept=".gco, .gcode" style="visibility: hidden">
+    <span id="file_content" type="hidden" value="">
 
   </body>
 
   <script type="module">
     import init from './target/wasm.js'
-   
-    var content = "";
-    
-    function readFileAsString() {
-        var files = this.files;
-        if (files.length === 0) {
-            console.log('No file is selected');
-            return;
-        }
-
-        var reader = new FileReader();
-        reader.onload = function(event) {
-
-            console.log('File content:', event.target.result);
-            var content = document.createElement("span");
-            content.setAttribute("id", "file_content");
-            content.setAttribute("type", "hidden");
-            content.setAttribute("value", event.target.result);
-
-            document.body.appendChild(content);
-
-            init();
+       
+    init();
 
 
-
-        };
-
-        reader.readAsText(files[0]);
-    }
-
-    document.getElementById('input_file').addEventListener('change', readFileAsString);
-   
   </script>
 
 </html>

@@ -15,6 +15,7 @@ impl Default for PanOrbitCamera {
     }
 }
 
+
 /// Hold readers for events
 #[derive(Default)]
 pub struct InputState {
@@ -29,6 +30,9 @@ pub fn pan_orbit_camera(
     _time: Res<Time>,
     windows: Res<Windows>,
     mut state: ResMut<InputState>,
+   /*  mut reader_motion: EventReader<MouseMotion>,
+    mut reader_scroll: EventReader<MouseWheel>,
+    mouse_position: EventReader<CursorMoved>,*/
     ev_motion: Res<Events<MouseMotion>>,
     mousebtn: Res<Input<MouseButton>>,
     ev_scroll: Res<Events<MouseWheel>>,
@@ -38,23 +42,25 @@ pub fn pan_orbit_camera(
     let mut rotation_move = Vec2::zero();
     let mut scroll = 0.0;
 
+    let window = windows.get_primary().unwrap();
+ 
+  
+    //No funciona con wasm.
     if mousebtn.pressed(MouseButton::Right) {
-        rotation_move = state
-            .reader_motion
-            .iter(&ev_motion)
-            .fold(rotation_move, |acc, x| acc + x.delta);
-    } 
-    scroll = state
-        .reader_scroll
+         rotation_move = state.reader_motion
+                .iter(&ev_motion)
+                .fold(rotation_move, |acc, x| acc + x.delta);
+        } 
+    
+    scroll = state.reader_scroll
         .iter(&ev_scroll)
         .fold(scroll, |acc, x| acc + x.y);
 
-    for ev in state.mouse_position.iter(&ev_cursor) {
+   /*  for ev in state.mouse_position.iter(&ev_cursor) {
         state.cursor_pos = ev.position;
-    }
+    }*/
 
 
-    let window = windows.get_primary().unwrap();
     let window_w = window.width();
     let window_h = window.height();
 
@@ -91,7 +97,7 @@ pub fn pan_orbit_camera(
 pub fn spawn_camera(commands: &mut Commands) {
     commands
         .spawn((PanOrbitCamera::default(),))
-        .with_bundle(Camera3dBundle {
+        .with_bundle(/*PerspectiveCameraBundle*/  Camera3dBundle {
             transform: Transform {
                 translation: Vec3::new(-336.65918, 333.0896, -447.4693), 
                 rotation: Quat::from_xyzw(0.084021315, 0.9145102, 0.2514309, -0.30560428), 

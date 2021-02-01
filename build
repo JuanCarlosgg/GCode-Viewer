@@ -1,4 +1,10 @@
 cargo run --release --features native
 
-cargo run --release --target wasm32-unknown-unknown --features web
-basic-http-server
+cargo build --release --target wasm32-unknown-unknown --features web
+wasm-bindgen --out-dir target/  --out-name wasm --target web --no-typescript target/wasm32-unknown-unknown/release/gcode-pruebas.wasm
+basic-http-server -x
+
+
+cargo build  --target wasm32-unknown-unknown --features web
+wasm-bindgen.exe --out-dir target/  --out-name wasm --target web --no-typescript target/wasm32-unknown-unknown/debug/gcode-pruebas.wasm
+basic-http-server -x

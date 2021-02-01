@@ -15,44 +15,52 @@ default = [
 
 native = [
   "bevy/bevy_wgpu",
+  "bevy/x11"
 ]
 
 web = [
-  "bevy_webgl2"
+  "bevy_webgl2",
+  "web-sys/Window",
+  "web-sys/Document",
+  "web-sys/HtmlElement",
+  "web-sys/Element",
+  "web-sys/FileReader",
+  "web-sys/InputEvent",
+  "web-sys/Blob",
+  "web-sys/DataTransfer",
+  "web-sys/FileList",
+  "web-sys/File"
+  
 ]
 
 [dependencies]
 gcode = "0.6.1"
-bevy = {version="0.4.0", default-features=false}
-bevy_webgl2 = {version="0.4.0", optional=true}
-#bevy_pbr = { version="0.4.0"}
+bevy =  {version="0.4.0", default-features=false}
+#bevy  = { git = "https://github.com/bevyengine/bevy.git", revision="bff44f76ec8a532b0cac88fa02cc2583a2e860e1"} 
 bevy_egui = "0.1"
 winit = {version = "0.24.0"}
 rayon = "1.5.0"
+bevy_webgl2 = {version="0.4.2", default-features = false, optional=true}
+
+[target.'cfg(any(windows, unix))'.dependencies]
 nfd = "0.0.4"
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+web-sys = "0.3.2"
+console_error_panic_hook = "0.1.6"
+wasm-bindgen = "0.2.70"
+js-sys = "0.3.47"
 
-[dependencies.web-sys]
-version = "0.3.2"
-features = [
-  "Window",
-  "Document",
-  "HtmlElement",
-  "Element"
-]
+[patch.crates-io]
+#bevy =  { git = "https://github.com/bevyengine/bevy.git", revision="bff44f76ec8a532b0cac88fa02cc2583a2e860e1"}
+rand = { path = "./deps/rand/"}
 
-# [patch.'https://github.com/bevyengine/bevy']
-# bevy = {git = "https://github.com/bevyengine/bevy//", rev="841755aaf23acfd55b375c37390daeb302c5b30b", default-features=false}
-
-# [patch.'https://github.com/mrk-its/bevy_webgl2']
-# bevy_webgl2 = {git = "https://github.com/mrk-its/bevy_webgl2//", rev="035236b8d7ec52b8e9e20399662e89c73e4521f6", default-features=false}
 
 [profile.dev]
 opt-level = 1
 
 [profile.release]
-# lto = true
-# opt-level = 's'
-
+lto = true
+opt-level = 's'
 
 

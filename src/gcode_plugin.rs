@@ -1,4 +1,4 @@
-use std::collections::{HashMap, binary_heap};
+use std::collections::{HashMap};
 
 use gcode::Mnemonic;
 
@@ -6,11 +6,7 @@ use bevy::prelude::*;
 
 use crate::{poly};
 
-#[cfg(target_arch = "wasm32")]
-use web_sys::{Document, Element, HtmlElement, Window};
 
-
-#[cfg(not(target_arch = "wasm32"))]
 pub struct GCodeContent {
     pub text: String, 
     pub level: u32,
@@ -21,12 +17,8 @@ pub struct GCodeContent {
     pub show_moves : bool,
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 impl Default for GCodeContent {
     fn default() -> Self {
-
-        //let content_ =
-        //    std::fs::read_to_string("files/barco.gco" /*"files/simpletest3.gco"*/).unwrap();
 
         GCodeContent {
             text : "".to_owned(),
@@ -40,45 +32,12 @@ impl Default for GCodeContent {
     }
 }
 
-#[cfg(target_arch = "wasm32")]
-pub struct GCodeContent {
-    text: String,
-    pos_iter: usize,
-    update: bool,
-    pos: (f32, f32, f32),
-    pub plane: Option<Entity>,
-    pub last_point: Option<Entity>,
-    pub last_transform: Option<Transform>,
+
+#[derive(Clone, Copy)]
+pub enum PolyElement {
+    Point(f32, f32, f32),
+    Change,
 }
-
-#[cfg(target_arch = "wasm32")]
-impl Default for GCodeContent {
-    fn default() -> Self {
-        let window = web_sys::window().expect("global window does not exists");
-        let document = window.document().expect("expecting a document on window");
-        let element = document
-            .get_element_by_id("file_content")
-            .expect("String does not exist");
-        let file: String = element
-            .get_attribute("value")
-            .expect("Content is not a string");
-
-        //web_sys::console::log_1(&file[..].into());
-
-        document.remove_child(&element);
-
-        GCodeContent {
-            text: file,
-            pos_iter: 0usize,
-            update: true,
-            pos: (0.0, 0.0, 0.0),
-            plane: None,
-            last_point: None,
-            last_transform: None,
-        }
-    }
-}
-
 
 fn spawn_points_custom_mesh(
     commands: &mut Commands,
@@ -87,8 +46,9 @@ fn spawn_points_custom_mesh(
     materials: &mut ResMut<Assets<StandardMaterial>>,
 ) {
     if !gcode.updated && gcode.text != "" {
-        let mut vec_lines: Vec<PbrBundle> = vec![];
+        //let mut vec_lines: Vec<PbrBundle> = vec![];
 
+        
         let mut last_x = gcode.pos.0;
         let mut last_y = gcode.pos.1;
         let mut last_z = gcode.pos.2;
@@ -107,14 +67,35 @@ fn spawn_points_custom_mesh(
         println!("lines: {}", segments.len());
 
         let mut ctr = 0;
+
+        // Dibujar un solo polígono por cada nivel.
+        let mut points_extrusion : Vec<PolyElement> = vec![];
+        let mut points_move : Vec<PolyElement> = vec![];
+        let mut last_points_extrusion : Vec<(f32, f32, f32)> = vec![];
+        let mut last_points_move : Vec<(f32, f32, f32)> = vec![];
+
         for block in segments.iter() {
             let block_str: &str = &*block.join("\n");
             let mut iter = gcode::parse(block_str).peekable();
-            let major_number = iter.peek().unwrap().major_number();
+            
+            let mut draw = false;
+            //let last_major_number : Option<u32> = None;
 
-            let mut points = vec![];
+            match iter.peek().unwrap().major_number() { 
+                1 => { 
+                    points_extrusion.push(PolyElement::Change);
+                    last_points_extrusion.push((gcode.pos.0, gcode.pos.1, gcode.pos.2)) 
+                },
+                0 => { 
+                    points_move.push(PolyElement::Change);
+                    last_points_move.push((gcode.pos.0, gcode.pos.1, gcode.pos.2)) 
+                },
+                _=>()
+            }
+            
 
             for (_idx, instruction) in iter.enumerate() {
+                //Parece que la función parse mete instrucciones vacías.
                 if instruction.arguments().is_empty() { continue; }
 
                 match (
@@ -126,6 +107,7 @@ fn spawn_points_custom_mesh(
                     //https://reprap.org/wiki/G-code/es#Buffered_G_Commands
                     G0 movimiento sin extrusión. Dibujar otro tipo de línea.
                     G1 movimiento con extrusión.
+                    El resto dan igual de momento.
                     */
                     (Mnemonic::General, 0, _) => {
                         last_x = instruction.value_for('X').unwrap_or(last_x);
@@ -133,59 +115,79 @@ fn spawn_points_custom_mesh(
                         let y_opt = instruction.value_for('Z');
                         last_y = y_opt.unwrap_or(last_y);
 
-                        points.push((last_x, last_y, last_z));
+                        points_move.push(PolyElement::Point(last_x, last_y, last_z));
+                        //last_major_number = Some(0);
+
                         if y_opt.is_some() {
                             gcode.level += 1;
                             ctr = 0;
+                            draw = true;
                         }
                     }
                     (Mnemonic::General, 1, _) => {
                         last_x = instruction.value_for('X').unwrap_or(last_x);
                         last_z = instruction.value_for('Y').unwrap_or(last_z);
-                        points.push((last_x, last_y, last_z));
+                        points_extrusion.push(PolyElement::Point(last_x, last_y, last_z));
+                        //last_major_number = Some(1);
                     }
-                    _ => (),
+                    _ => continue,
                 }
 
                 
             }
 
-            if major_number < 2 {
-                let last_point = Vec3::new(gcode.pos.0, gcode.pos.1, gcode.pos.2);
-                gcode.pos = (last_x, last_y, last_z);
+            gcode.pos = (last_x, last_y, last_z);
+            ctr +=1;
 
-                let (size, color) = match major_number {
-                    0 => (0.12, Color::rgb(1.0, 1.0, 0.0)),
-                    1 => (0.22, Color::rgb(1.0, 0.0, 0.0)),
-                    _ => continue,
-                };
+            if draw {
+                //let last_point = Vec3::new(gcode.pos.0, gcode.pos.1, gcode.pos.2);
 
-                let vis = major_number == 1 || gcode.show_moves;
+                let (size_move, color_move) = (0.12, Color::rgb(1.0, 1.0, 0.0));
+                let (size_extr, color_extr) =  (0.22, Color::rgb(1.0, 0.0, 0.0));
+                
+                let level = gcode.level;
+
+                //let vis = major_number == 1 || gcode.show_moves;
                 /*vec_lines.push(*/ 
                 commands.spawn(PbrBundle {
-                    mesh: meshes.add(Mesh::from(poly::Poly::new(size, size, points, last_point))),
-                    material: materials.add(color.into()),
+                    mesh: meshes.add(Mesh::from(poly::Poly::new(size_extr, size_extr, &points_extrusion, &last_points_extrusion))),
+                    material: materials.add(color_extr.into()),
                     transform: Transform::from_translation(Vec3::new(-100.0, 0.0, -100.0)), //rotate(&(-new_point + last_point)),
                     visible : Visible {
-                        is_visible: vis,
+                        is_visible: true,
                         is_transparent: false,
                     },
                     ..Default::default()
                 });
-                 /* );*/
-
-                let level = gcode.level;
                 let c = commands.current_entity().unwrap();
-                gcode.entities.insert((level, major_number, ctr), c);
+                gcode.entities.insert((level, 1, ctr), c);
 
-                ctr +=1;
+                commands.spawn(PbrBundle {
+                    mesh: meshes.add(Mesh::from(poly::Poly::new(size_move, size_move, &points_move, &last_points_move))),
+                    material: materials.add(color_move.into()),
+                    transform: Transform::from_translation(Vec3::new(-100.0, 0.0, -100.0)), //rotate(&(-new_point + last_point)),
+                    visible : Visible {
+                        is_visible: false,
+                        is_transparent: false,
+                    },
+                    ..Default::default()
+                });
+                let c = commands.current_entity().unwrap();
+                gcode.entities.insert((level, 0, ctr), c);
+
+
+                points_move.clear();
+                last_points_move.clear();
+                points_extrusion.clear();
+                last_points_extrusion.clear();
+                
             }
         }
 
         
 
-        println!("Total : {}", vec_lines.len());
-        commands.spawn_batch(vec_lines);
+        //println!("Total : {}", vec_lines.len());
+        //commands.spawn_batch(vec_lines);
 
         
         gcode.updated = true;
@@ -247,6 +249,7 @@ impl Plugin for GCodePlugin {
         let state = GCodeContent {
             ..Default::default()
         };
+        //app.insert_resource(state)
         app.add_resource(state)
             .add_system(spawn_points_system.system());
     }
