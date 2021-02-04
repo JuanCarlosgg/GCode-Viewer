@@ -2,7 +2,7 @@ use std::{collections::{HashMap}};
 
 use bevy::{diagnostic::{Diagnostics, FrameTimeDiagnosticsPlugin}, prelude::*};
 
-use bevy_egui::{EguiContext, egui};
+use bevy_egui::{EguiContext, egui, EguiSettings};
 
 #[cfg(not(target_arch = "wasm32"))] 
 use nfd::Response;
@@ -44,13 +44,17 @@ pub struct UiState {
     min_layer : u32,
     max_layer : u32,
     top_layer : u32,
-    clicked : bool,
-    text : String,
+
 }
 
 
+pub fn update_ui_scale_factor(mut egui_settings: ResMut<EguiSettings>, windows: Res<Windows>) {
+    if let Some(window) = windows.get_primary() {
+        egui_settings.scale_factor = 1.0 / window.scale_factor();
+    }
+}
+
 pub fn ui_system(
-    time: Res<Time>,
     mut egui_context: ResMut<EguiContext>,
     mut gcode_context: ResMut<gcode_plugin::GCodeContent>,
     mut ui_state: ResMut<UiState>,
@@ -58,9 +62,9 @@ pub fn ui_system(
     diagnostics: Res<Diagnostics>,
 ) {
     let ctx = &mut egui_context.ctx;
-
+    
     let mut load = false;
-    let mut show = false;
+    //let mut show = false;
     #[cfg(target_arch = "wasm32")]
     let mut process = false;
 
@@ -70,9 +74,7 @@ pub fn ui_system(
     let last_layer_options = ui_state.layers_option;
     let last_show_moves = gcode_context.show_moves;
 
-    //Hacerlo una ventana flotante que se pueda minimizar.
     egui::Window::new("Configuration").show(ctx, |ui| {
-    //ui.heading("Config");
 
     ui.separator();
 
@@ -130,10 +132,8 @@ pub fn ui_system(
             process = ui.button("Process File").on_hover_text("Process the new new file").clicked;
             }
 
-            show = ui.button("Show GCode").on_hover_text("Show the content of the GCode").clicked;
-            
-            
-            if show { ui_state.clicked = !ui_state.clicked; }
+            //show = ui.button("Show GCode").on_hover_text("Show the content of the GCode").clicked;
+            //if show { ui_state.clicked = !ui_state.clicked; }
 
         });
 
@@ -161,7 +161,7 @@ pub fn ui_system(
         },
         LayerOption::Range => {
             if last_layer_options != LayerOption::Range || last_min_layer != ui_state.min_layer || last_max_layer != ui_state.max_layer || last_show_moves != ui_state.moves {
-                println!("Mostramos todo entre {} y {} . size: {}", ui_state.min_layer, ui_state.max_layer,  gcode_context.entities.len());
+                //println!("Mostramos todo entre {} y {} . size: {}", ui_state.min_layer, ui_state.max_layer,  gcode_context.entities.len());
                 let ent = gcode_context.entities.iter().map(|(idx, e)| {
                     let in_range = idx.0 >=  ui_state.min_layer && idx.0 <= ui_state.max_layer;
                     let show = if idx.1 == 1 { true } else if idx.1 == 0 && gcode_context.show_moves { true } else { false };
@@ -180,7 +180,7 @@ pub fn ui_system(
         },
         LayerOption::Top => {
             if last_layer_options !=  LayerOption::Top ||  ui_state.top_layer != last_top_layer || last_show_moves != ui_state.moves {
-                println!("Mostramos todo hasta {} size: {}", ui_state.top_layer,  gcode_context.entities.len());
+                //println!("Mostramos todo hasta {} size: {}", ui_state.top_layer,  gcode_context.entities.len());
                 
                 let ent = gcode_context.entities.iter().map(|(idx, e)| { 
                     let in_range = idx.0 <=  ui_state.top_layer;
@@ -201,7 +201,7 @@ pub fn ui_system(
     if load {
 
         #[cfg(not(target_arch = "wasm32"))] {
-            let result = nfd::open_file_dialog(Some("gco"), None).unwrap_or_else(|e| {
+            let result = nfd::open_file_dialog(Some("gco, gcode"), None).unwrap_or_else(|e| {
                 panic!(e);
             });
         
@@ -211,7 +211,6 @@ pub fn ui_system(
                     let content_ =
                         std::fs::read_to_string(file_path).unwrap();
 
-                    ui_state.text = content_.clone();
                     gcode_context.need_reload = true;
                     gcode_context.text = content_;
                 },
@@ -291,11 +290,11 @@ pub fn ui_system(
 
         gcode_context.need_reload = true;
         gcode_context.text = file.clone();
-        ui_state.text = file;
+        //ui_state.text = file;
         element.set_attribute("value", "");
     }
 
-    if ui_state.clicked {
+    /*if ui_state.clicked {
 
         egui::Window::new("GCode").show(ctx, |ui| {
             egui::ScrollArea::from_max_height(200.0)
@@ -304,8 +303,8 @@ pub fn ui_system(
                 ui.label(&ui_state.text[..]);
             });
         });
-    }
-
+    }*/
+    
     egui::Window::new("Info").show(ctx, |ui| {
         if let Some(fps_diagnostic) = diagnostics.get(FrameTimeDiagnosticsPlugin::FPS) {
             if let Some(fps_avg) = fps_diagnostic.average() {

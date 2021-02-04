@@ -1,10 +1,9 @@
 use std::collections::{HashMap};
 
 use gcode::Mnemonic;
-
 use bevy::prelude::*;
 
-use crate::{poly};
+use crate::layer;
 
 
 pub struct GCodeContent {
@@ -46,14 +45,11 @@ fn spawn_points_custom_mesh(
     materials: &mut ResMut<Assets<StandardMaterial>>,
 ) {
     if !gcode.updated && gcode.text != "" {
-        //let mut vec_lines: Vec<PbrBundle> = vec![];
-
         
         let mut last_x = gcode.pos.0;
         let mut last_y = gcode.pos.1;
         let mut last_z = gcode.pos.2;
 
-        println!("Start");
 
         let mut segments: Vec<Vec<String>> = vec![];
         gcode.text.lines().for_each(|line: &str| {
@@ -81,16 +77,18 @@ fn spawn_points_custom_mesh(
             let mut draw = false;
             //let last_major_number : Option<u32> = None;
 
-            match iter.peek().unwrap().major_number() { 
-                1 => { 
-                    points_extrusion.push(PolyElement::Change);
-                    last_points_extrusion.push((gcode.pos.0, gcode.pos.1, gcode.pos.2)) 
-                },
-                0 => { 
-                    points_move.push(PolyElement::Change);
-                    last_points_move.push((gcode.pos.0, gcode.pos.1, gcode.pos.2)) 
-                },
-                _=>()
+            if let Some(first) = iter.peek() {
+                match first.major_number() { 
+                    1 => { 
+                        points_extrusion.push(PolyElement::Change);
+                        last_points_extrusion.push((gcode.pos.0, gcode.pos.1, gcode.pos.2)) 
+                    },
+                    0 => { 
+                        points_move.push(PolyElement::Change);
+                        last_points_move.push((gcode.pos.0, gcode.pos.1, gcode.pos.2)) 
+                    },
+                    _=>()
+                }
             }
             
 
@@ -150,7 +148,7 @@ fn spawn_points_custom_mesh(
                 //let vis = major_number == 1 || gcode.show_moves;
                 /*vec_lines.push(*/ 
                 commands.spawn(PbrBundle {
-                    mesh: meshes.add(Mesh::from(poly::Poly::new(size_extr, size_extr, &points_extrusion, &last_points_extrusion))),
+                    mesh: meshes.add(Mesh::from(layer::Poly::new(size_extr, size_extr, &points_extrusion, &last_points_extrusion))),
                     material: materials.add(color_extr.into()),
                     transform: Transform::from_translation(Vec3::new(-100.0, 0.0, -100.0)), //rotate(&(-new_point + last_point)),
                     visible : Visible {
@@ -163,7 +161,7 @@ fn spawn_points_custom_mesh(
                 gcode.entities.insert((level, 1, ctr), c);
 
                 commands.spawn(PbrBundle {
-                    mesh: meshes.add(Mesh::from(poly::Poly::new(size_move, size_move, &points_move, &last_points_move))),
+                    mesh: meshes.add(Mesh::from(layer::Poly::new(size_move, size_move, &points_move, &last_points_move))),
                     material: materials.add(color_move.into()),
                     transform: Transform::from_translation(Vec3::new(-100.0, 0.0, -100.0)), //rotate(&(-new_point + last_point)),
                     visible : Visible {
@@ -183,13 +181,7 @@ fn spawn_points_custom_mesh(
                 
             }
         }
-
-        
-
-        //println!("Total : {}", vec_lines.len());
-        //commands.spawn_batch(vec_lines);
-
-        
+ 
         gcode.updated = true;
         println!("Finish");
     }
@@ -203,14 +195,7 @@ pub fn spawn_points_system(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     
-    /* 
-    if !state.update {
-       return; 
-    }
-
-    state.update = false;
-    */
-
+ 
     if state.need_reload {
 
         println!("Need reload");
@@ -225,22 +210,10 @@ pub fn spawn_points_system(
         state.entities.clear();
     }
 
-    //spawn_points_optim(commands, &mut state, &mut meshes, &mut materials);
     spawn_points_custom_mesh(commands, &mut state, &mut meshes, &mut materials);
 
-    /* 
-     
-    let pr  = PbrBundle {
-        mesh: meshes.add(Mesh::from(poly::Poly::new(0.5, 0.5, vec![(0.0, 5.0, 0.0), (0.0, 7.0, 2.0), (5.0, 7.0, 2.0), (6.0, 7.0, 3.0), (7.0, 7.0, 2.0)], Vec3::new(0.0, 0.0,0.0)))),
-        material: materials.add(Color::rgb(1.0,0.0,0.0).into()),
-        transform: Transform::default(),
-        ..Default::default()
-    };
-
-    commands.spawn(pr);
-    */
-
 }
+
 #[derive(Default)]
 pub struct GCodePlugin;
 

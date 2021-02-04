@@ -7,10 +7,7 @@ edition = "2018"
 
 [features]
 default = [
-  "bevy/bevy_gltf",
   "bevy/bevy_winit",
-  "bevy/render",
-  "bevy/png",
 ]
 
 native = [
@@ -30,30 +27,27 @@ web = [
   "web-sys/DataTransfer",
   "web-sys/FileList",
   "web-sys/File"
-  
 ]
 
 [dependencies]
 gcode = "0.6.1"
 bevy =  {version="0.4.0", default-features=false}
-#bevy  = { git = "https://github.com/bevyengine/bevy.git", revision="bff44f76ec8a532b0cac88fa02cc2583a2e860e1"} 
 bevy_egui = "0.1"
-winit = {version = "0.24.0"}
-rayon = "1.5.0"
-bevy_webgl2 = {version="0.4.2", default-features = false, optional=true}
 
-[target.'cfg(any(windows, unix))'.dependencies]
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 nfd = "0.0.4"
+winit = {version = "0.24.0"}
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+bevy_webgl2 = {version="0.4.2", default-features = false, optional=true}
 web-sys = "0.3.2"
 console_error_panic_hook = "0.1.6"
 wasm-bindgen = "0.2.70"
 js-sys = "0.3.47"
 
 [patch.crates-io]
-#bevy =  { git = "https://github.com/bevyengine/bevy.git", revision="bff44f76ec8a532b0cac88fa02cc2583a2e860e1"}
 rand = { path = "./deps/rand/"}
+bevy_webgl2 = { git = "https://github.com/mvlabat/bevy_webgl2.git", branch = "fix-scissor-test" }
 
 
 [profile.dev]

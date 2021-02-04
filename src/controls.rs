@@ -36,7 +36,7 @@ pub fn pan_orbit_camera(
     ev_motion: Res<Events<MouseMotion>>,
     mousebtn: Res<Input<MouseButton>>,
     ev_scroll: Res<Events<MouseWheel>>,
-    ev_cursor: Res<Events<CursorMoved>>,
+    //ev_cursor: Res<Events<CursorMoved>>,
     mut query: Query<(&mut PanOrbitCamera, &mut Transform)>,
 ) {
     let mut rotation_move = Vec2::zero();
