@@ -1,5 +1,5 @@
 [package]
-name = "gcode-pruebas"
+name = "gcode_viewer"
 version = "0.1.0"
 authors = ["JuanCarlosgg <juancarlos97gg@gmail.com>"]
 edition = "2018"
