@@ -24,6 +24,18 @@ static START: Once = Once::new();
 #[cfg(target_arch = "wasm32")]
 use js_sys::Reflect;
 
+#[cfg(target_arch = "wasm32")] 
+use lazy_static::lazy_static;
+
+#[cfg(target_arch = "wasm32")] 
+use std::sync::Mutex;
+
+#[cfg(target_arch = "wasm32")]
+lazy_static!{
+    static ref TEXT: Mutex<String> = Mutex::new(String::new());
+}
+
+
 #[derive(PartialEq, Clone, Copy)]
 enum LayerOption {
     All,
@@ -132,8 +144,7 @@ pub fn ui_system(
             process = ui.button("Process File").on_hover_text("Process the new new file").clicked;
             }
 
-            //show = ui.button("Show GCode").on_hover_text("Show the content of the GCode").clicked;
-            //if show { ui_state.clicked = !ui_state.clicked; }
+            
 
         });
 
@@ -245,14 +256,16 @@ pub fn ui_system(
                   let content = file_reader.result().expect("No hay result");
                   
                   
-                  let window = web_sys::window().expect("global window does not exists");
-                  let document = window.document().expect("expecting a document on window");
-                  let element = document
-                  .get_element_by_id("file_content")
-                  .expect("String does not exist");
+                  //let window = web_sys::window().expect("global window does not exists");
+                  //let document = window.document().expect("expecting a document on window");
+                  //let element = document
+                  //.get_element_by_id("file_content")
+                  //.expect("String does not exist");
                   
+                  let mut text_val = TEXT.lock().unwrap();
+                  *text_val = content.as_string().expect("No se puede convertir a String");
                   
-                  element.set_attribute("value", &content.as_string().expect("No se puede convertir a String"));
+                  //element.set_attribute("value", &content.as_string().expect("No se puede convertir a String"));
                   
 
                 }) as  Box< dyn FnMut(_)>);
@@ -279,19 +292,19 @@ pub fn ui_system(
 
     #[cfg(target_arch = "wasm32")] if process {
 
-        let window = web_sys::window().expect("global window does not exists");
+        /*let window = web_sys::window().expect("global window does not exists");
         let document = window.document().expect("expecting a document on window");
         let element = document
         .get_element_by_id("file_content")
         .expect("String does not exist");
         let file: String = element
         .get_attribute("value")
-        .expect("Content is not a string");
+        .expect("Content is not a string");*/
 
         gcode_context.need_reload = true;
-        gcode_context.text = file.clone();
+        gcode_context.text = (*TEXT).lock().unwrap().clone();
         //ui_state.text = file;
-        element.set_attribute("value", "");
+        //element.set_attribute("value", "");
     }
 
     /*if ui_state.clicked {
