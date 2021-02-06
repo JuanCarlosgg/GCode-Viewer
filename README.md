@@ -2,7 +2,7 @@
 
 A Gcode viewer with Rust and Bevy.
 
-[Demo](https://imgur.com/NppoVPF)
+[<img src="https://img.youtube.com/vi/BEj_D6cM_9E/maxresdefault.jpg" width="50%">](https://youtu.be/BEj_D6cM_9E)
 
 
 Run it:
