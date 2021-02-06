@@ -47,7 +47,7 @@ js-sys = "0.3.47"
 lazy_static = "1.4.0"
 
 [patch.crates-io]
-rand = { path = "./deps/rand/"}
+#rand = { path = "./deps/rand/"}
 bevy_webgl2 = { git = "https://github.com/mvlabat/bevy_webgl2.git", branch = "fix-scissor-test" }
 
 
